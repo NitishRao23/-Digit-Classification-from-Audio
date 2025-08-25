@@ -1,0 +1,40 @@
+# Project Configuration
+project:
+  name: "digit-classification-audio"
+  version: "1.0.0"
+
+# Dataset Configuration
+dataset:
+  name: "Matthijs/fsdd"
+  cache_dir: "./data/cache"
+  sample_rate: 8000
+  
+# Audio Processing
+audio:
+  target_sample_rate: 8000
+  target_duration: 1.0  # seconds
+  n_mels: 64
+  n_fft: 512
+  hop_length: 256
+
+# Model Configuration
+model:
+  input_size: 64
+  hidden_sizes: [128, 64]
+  num_classes: 10
+  dropout: 0.2
+
+# Training Configuration
+training:
+  batch_size: 32
+  learning_rate: 0.001
+  num_epochs: 50
+  validation_split: 0.2
+  test_split: 0.1
+
+# Paths
+paths:
+  data_dir: "./data"
+  models_dir: "./models"
+  logs_dir: "./logs"
+  output_dir: "./output"

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio ML Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+
+        .section h2 {
+            color: #555;
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: linear-gradient(45deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.recording {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .visualizer {
+            width: 100%;
+            height: 200px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .predictions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .prediction-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .prediction-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.2);
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .audio-player {
+            width: 100%;
+            margin: 15px 0;
+        }
+
+        .file-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Audio ML Interface</h1>
+        
+        <!-- File Upload Section -->
+        <div class="section">
+            <h2>📁 Upload Audio File</h2>
+            <div class="upload-area" id="uploadArea">
+                <div>
+                    <strong>Drop audio files here or click to browse</strong>
+                    <br><br>
+                    <small>Supported: MP3, WAV, M4A, OGG</small>
+                </div>
+                <input type="file" id="fileInput" accept="audio/*" style="display: none;">
+            </div>
+            <div id="fileInfo" class="file-info" style="display: none;"></div>
+        </div>
+
+        <!-- Recording Section -->
+        <div class="section">
+            <h2>🎤 Record Audio</h2>
+            <div class="controls">
+                <button class="btn" id="startRecord">Start Recording</button>
+                <button class="btn" id="stopRecord" disabled>Stop Recording</button>
+                <button class="btn" id="playRecord" disabled>Play Recording</button>
+            </div>
+            <canvas class="visualizer" id="visualizer"></canvas>
+            <div id="recordingStatus" class="status info" style="display: none;"></div>
+        </div>
+
+        <!-- Audio Player Section -->
+        <div class="section" id="playerSection" style="display: none;">
+            <h2>🎵 Audio Player</h2>
+            <audio class="audio-player" id="audioPlayer" controls></audio>
+            <canvas class="visualizer" id="playerVisualizer"></canvas>
+        </div>
+
+        <!-- Predictions Section -->
+        <div class="section">
+            <h2>🤖 ML Predictions</h2>
+            <div class="controls">
+                <button class="btn" id="analyzeBtn" disabled>Analyze Audio</button>
+            </div>
+            <div id="predictions" class="predictions"></div>
+            <div id="analysisStatus" class="status info" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        class AudioMLInterface {
+            constructor() {
+                this.audioContext = null;
+                this.mediaRecorder = null;
+                this.recordedChunks = [];
+                this.currentAudioBuffer = null;
+                this.isRecording = false;
+                this.animationId = null;
+
+                this.initializeElements();
+                this.setupEventListeners();
+                this.initializeAudioContext();
+            }
+
+            initializeElements() {
+                this.elements = {
+                    uploadArea: document.getElementById('uploadArea'),
+                    fileInput: document.getElementById('fileInput'),
+                    fileInfo: document.getElementById('fileInfo'),
+                    startRecord: document.getElementById('startRecord'),
+                    stopRecord: document.getElementById('stopRecord'),
+                    playRecord: document.getElementById('playRecord'),
+                    visualizer: document.getElementById('visualizer'),
+                    playerVisualizer: document.getElementById('playerVisualizer'),
+                    audioPlayer: document.getElementById('audioPlayer'),
+                    playerSection: document.getElementById('playerSection'),
+                    analyzeBtn: document.getElementById('analyzeBtn'),
+                    predictions: document.getElementById('predictions'),
+                    recordingStatus: document.getElementById('recordingStatus'),
+                    analysisStatus: document.getElementById('analysisStatus')
+                };
+            }
+
+            async initializeAudioContext() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (error) {
+                    this.showStatus('error', 'Audio not supported in this browser');
+                }
+            }
+
+            setupEventListeners() {
+                // File upload
+                this.elements.uploadArea.addEventListener('click', () => this.elements.fileInput.click());
+                this.elements.fileInput.addEventListener('change', this.handleFileUpload.bind(this));
+                
+                // Drag and drop
+                this.elements.uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+                this.elements.uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                this.elements.uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+
+                // Recording controls
+                this.elements.startRecord.addEventListener('click', this.startRecording.bind(this));
+                this.elements.stopRecord.addEventListener('click', this.stopRecording.bind(this));
+                this.elements.playRecord.addEventListener('click', this.playRecording.bind(this));
+
+                // Analysis
+                this.elements.analyzeBtn.addEventListener('click', this.analyzeAudio.bind(this));
+
+                // Audio player events
+                this.elements.audioPlayer.addEventListener('loadeddata', () => {
+                    this.elements.analyzeBtn.disabled = false;
+                    this.setupAudioVisualization(this.elements.audioPlayer, this.elements.playerVisualizer);
+                });
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                this.elements.uploadArea.classList.add('dragover');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                this.elements.uploadArea.classList.remove('dragover');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                this.elements.uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.processAudioFile(files[0]);
+                }
+            }
+
+            handleFileUpload(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    this.processAudioFile(file);
+                }
+            }
+
+            processAudioFile(file) {
+                if (!file.type.startsWith('audio/')) {
+                    this.showStatus('error', 'Please select an audio file');
+                    return;
+                }
+
+                const url = URL.createObjectURL(file);
+                this.elements.audioPlayer.src = url;
+                this.elements.playerSection.style.display = 'block';
+                
+                this.elements.fileInfo.style.display = 'block';
+                this.elements.fileInfo.innerHTML = `
+                    <strong>File:</strong> ${file.name}<br>
+                    <strong>Size:</strong> ${(file.size / 1024 / 1024).toFixed(2)} MB<br>
+                    <strong>Type:</strong> ${file.type}
+                `;
+
+                this.showStatus('success', 'Audio file loaded successfully!');
+            }
+
+            async startRecording() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.mediaRecorder = new MediaRecorder(stream);
+                    this.recordedChunks = [];
+
+                    this.mediaRecorder.ondataavailable = (e) => {
+                        if (e.data.size > 0) this.recordedChunks.push(e.data);
+                    };
+
+                    this.mediaRecorder.onstop = this.handleRecordingStop.bind(this);
+
+                    this.mediaRecorder.start(100);
+                    this.isRecording = true;
+
+                    this.elements.startRecord.disabled = true;
+                    this.elements.startRecord.classList.add('recording');
+                    this.elements.stopRecord.disabled = false;
+
+                    this.showRecordingStatus('Recording in progress...', 'info');
+                    this.startVisualization(stream);
+
+                } catch (error) {
+                    this.showStatus('error', 'Microphone access denied');
+                }
+            }
+
+            stopRecording() {
+                if (this.mediaRecorder && this.isRecording) {
+                    this.mediaRecorder.stop();
+                    this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    
+                    this.isRecording = false;
+                    this.elements.startRecord.disabled = false;
+                    this.elements.startRecord.classList.remove('recording');
+                    this.elements.stopRecord.disabled = true;
+
+                    if (this.animationId) {
+                        cancelAnimationFrame(this.animationId);
+                    }
+                }
+            }
+
+            handleRecordingStop() {
+                const blob = new Blob(this.recordedChunks, { type: 'audio/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                this.elements.audioPlayer.src = url;
+                this.elements.playerSection.style.display = 'block';
+                this.elements.playRecord.disabled = false;
+                this.elements.analyzeBtn.disabled = false;
+
+                this.showRecordingStatus('Recording completed!', 'success');
+            }
+
+            playRecording() {
+                if (this.elements.audioPlayer.src) {
+                    this.elements.audioPlayer.play();
+                }
+            }
+
+            startVisualization(stream) {
+                const source = this.audioContext.createMediaStreamSource(stream);
+                const analyser = this.audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+
+                const canvas = this.elements.visualizer;
+                const ctx = canvas.getContext('2d');
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                const draw = () => {
+                    if (!this.isRecording) return;
+
+                    this.animationId = requestAnimationFrame(draw);
+                    analyser.getByteFrequencyData(dataArray);
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(1, '#764ba2');
+                    
+                    ctx.fillStyle = gradient;
+
+                    const barWidth = canvas.width / dataArray.length;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        const barHeight = (dataArray[i] / 255) * canvas.height;
+                        ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight);
+                    }
+                };
+
+                draw();
+            }
+
+            setupAudioVisualization(audioElement, canvas) {
+                audioElement.addEventListener('play', () => {
+                    if (this.audioContext.state === 'suspended') {
+                        this.audioContext.resume();
+                    }
+                    
+                    const source = this.audioContext.createMediaElementSource(audioElement);
+                    const analyser = this.audioContext.createAnalyser();
+                    analyser.fftSize = 256;
+                    
+                    source.connect(analyser);
+                    analyser.connect(this.audioContext.destination);
+
+                    this.visualizePlayback(analyser, canvas);
+                });
+            }
+
+            visualizePlayback(analyser, canvas) {
+                const ctx = canvas.getContext('2d');
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                const draw = () => {
+                    requestAnimationFrame(draw);
+                    analyser.getByteFrequencyData(dataArray);
+
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+                    gradient.addColorStop(0, '#667eea');
+                    gradient.addColorStop(1, '#764ba2');
+                    
+                    ctx.fillStyle = gradient;
+
+                    const barWidth = canvas.width / dataArray.length;
+                    for (let i = 0; i < dataArray.length; i++) {
+                        const barHeight = (dataArray[i] / 255) * canvas.height;
+                        ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 1, barHeight);
+                    }
+                };
+
+                draw();
+            }
+
+            async analyzeAudio() {
+                this.showAnalysisStatus('Analyzing audio...', 'info');
+                this.elements.analyzeBtn.disabled = true;
+
+                // Simulate ML analysis with mock predictions
+                setTimeout(() => {
+                    const mockPredictions = [
+                        { label: 'Speech', confidence: 0.85 },
+                        { label: 'Music', confidence: 0.72 },
+                        { label: 'Noise', confidence: 0.43 },
+                        { label: 'Silence', confidence: 0.12 }
+                    ];
+
+                    this.displayPredictions(mockPredictions);
+                    this.showAnalysisStatus('Analysis completed!', 'success');
+                    this.elements.analyzeBtn.disabled = false;
+                }, 2000);
+            }
+
+            displayPredictions(predictions) {
+                this.elements.predictions.innerHTML = '';
+                
+                predictions.forEach((pred, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'prediction-card';
+                    
+                    card.innerHTML = `
+                        <h3>${pred.label}</h3>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${pred.confidence * 100}%"></div>
+                        </div>
+                        <strong>${(pred.confidence * 100).toFixed(1)}%</strong>
+                    `;
+
+                    // Add animation delay
+                    card.style.animationDelay = `${index * 0.1}s`;
+                    this.elements.predictions.appendChild(card);
+                });
+            }
+
+            showStatus(type, message) {
+                // Create temporary status element
+                const status = document.createElement('div');
+                status.className = `status ${type}`;
+                status.textContent = message;
+                status.style.position = 'fixed';
+                status.style.top = '20px';
+                status.style.right = '20px';
+                status.style.zIndex = '1000';
+                
+                document.body.appendChild(status);
+                
+                setTimeout(() => {
+                    if (status.parentNode) {
+                        status.parentNode.removeChild(status);
+                    }
+                }, 3000);
+            }
+
+            showRecordingStatus(message, type) {
+                this.elements.recordingStatus.textContent = message;
+                this.elements.recordingStatus.className = `status ${type}`;
+                this.elements.recordingStatus.style.display = 'block';
+            }
+
+            showAnalysisStatus(message, type) {
+                this.elements.analysisStatus.textContent = message;
+                this.elements.analysisStatus.className = `status ${type}`;
+                this.elements.analysisStatus.style.display = 'block';
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new AudioMLInterface();
+        });
+    </script>
+</body>
+</html>
